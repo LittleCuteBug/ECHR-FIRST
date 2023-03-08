@@ -12,6 +12,7 @@ from torch.optim import AdamW
 from transformers import get_scheduler
 import evaluate
 import argparse
+import logging
 
 def seed_everything(seed: int):
     random.seed(seed)
@@ -34,6 +35,7 @@ def one_hot_labels(example):
     return example
 
 def train_model(model, train_dataloader, epoch_n):
+    logger = logging.getLogger(f"train epoch {epoch_n}")
     model.train()
     total_train_loss = 0
     for batch in tqdm(train_dataloader, desc=f"train epoch {epoch_n}"):
@@ -49,9 +51,11 @@ def train_model(model, train_dataloader, epoch_n):
         lr_scheduler.step()
         model.zero_grad()
     avg_train_loss = total_train_loss / len(train_dataloader)
-    print("avg_train_loss", avg_train_loss)
+    print(f"avg_train_loss: {avg_train_loss}")
+    logger.info(f"avg_train_loss: {avg_train_loss}")
 
 def cal_test_score(model, test_dataloader, epoch_n):
+    logger = logging.getLogger(f"test epoch {epoch_n}")
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
@@ -75,17 +79,23 @@ def cal_test_score(model, test_dataloader, epoch_n):
             metric[i].add_batch(predictions=p, references=r)
             metric_micro.add_batch(predictions=p, references=r)
     avg_test_loss = total_test_loss / len(test_dataloader)
-    print("avg_test_loss", avg_test_loss)
+    print(f"avg_test_loss: {avg_test_loss}")
+    logger.info(f"avg_test_loss: {avg_test_loss}")
     f1_avg = 0
     for idx, m in enumerate(metric):
         scores = m.compute()
-        print(f"label {idx}:", scores)
+        print(f"label {idx}: {str(scores)}")
+        logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    print("f1 macro:", f1_avg/10)
-    print("f1 micro:", metric_micro.compute())
+    print(f"f1 macro: {f1_avg/10}")
+    logger.info(f"f1 macro: {f1_avg/10}")
+    metric_micro_score = metric_micro.compute()
+    print(f"f1 micro: {str(metric_micro_score)}")
+    logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_test_loss
 
 def cal_val_score(model, validation_dataloader, epoch_n):
+    logger = logging.getLogger(f"validation epoch {epoch_n}")
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
@@ -110,13 +120,18 @@ def cal_val_score(model, validation_dataloader, epoch_n):
             metric_micro.add_batch(predictions=p, references=r)
     avg_val_loss = total_val_loss / len(validation_dataloader)
     print("avg_val_loss", avg_val_loss)
+    logger.info(f"avg_val_loss: {avg_val_loss}")
     f1_avg = 0
     for idx, m in enumerate(metric):
         scores = m.compute()
-        print(f"label {idx}:", scores)
+        print(f"label {idx}: {str(scores)}")
+        logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    print("f1 macro:", f1_avg/10)
-    print("f1 micro:", metric_micro.compute())
+    print(f"f1 macro: {f1_avg/10}")
+    logger.info(f"f1 macro: {f1_avg/10}")
+    metric_micro_score = metric_micro.compute()
+    print(f"f1 micro: {str(metric_micro_score)}")
+    logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_val_loss
 
 
@@ -129,9 +144,16 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--model_saving_path", required=True)
     parser.add_argument("-s", "--seed_number", type=int, default=42)
     parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
+    parser.add_argument("--log_file", required=True)
     args = parser.parse_args()
     
     print(args)
+
+    logging.basicConfig(filename=args.log_file,
+        filemode='w',
+        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+        datefmt='%H:%M:%S',
+        level=logging.DEBUG)
 
     task_name = args.task_name
     num_epochs = args.num_epochs
