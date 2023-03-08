@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--num_epochs", type=int, default=7)
     parser.add_argument("-lr", "--learning_rate", type=float, default=1e-5)
     parser.add_argument("-p", "--model_saving_path", required=True)
-    parser.add_argument("-s", "--seed_number", default=42)
+    parser.add_argument("-s", "--seed_number", type=int, default=42)
     parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
     args = parser.parse_args()
     
