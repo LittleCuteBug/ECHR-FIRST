@@ -40,4 +40,6 @@ optional arguments:
   -s SEED_NUMBER, --seed_number SEED_NUMBER
   --test                Run with sampled data for testing
   --log_file LOG_FILE
+  --train_batch_size TRAIN_BATCH_SIZE
+  --eval_batch_size EVAL_BATCH_SIZE
 ```

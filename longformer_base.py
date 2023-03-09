@@ -145,6 +145,9 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--seed_number", type=int, default=42)
     parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
     parser.add_argument("--log_file", required=True)
+    parser.add_argument("--train_batch_size", type=int, default=1)
+    parser.add_argument("--eval_batch_size", type=int, default=5)
+    
     args = parser.parse_args()
     
     print(args)
@@ -158,6 +161,8 @@ if __name__ == "__main__":
     task_name = args.task_name
     num_epochs = args.num_epochs
     learning_rate = args.learning_rate
+    train_batch_size = args.train_batch_size
+    eval_batch_size = args.eval_batch_size
     model_saving_path = args.model_saving_path
 
     isExist = os.path.exists(model_saving_path)
@@ -211,11 +216,11 @@ if __name__ == "__main__":
     else:
         train_dataset = concatenate_datasets([tokenized_datasets_fact["train"], tokenized_datasets_legal])
 
-    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=1)
+    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=train_batch_size)
 
-    test_dataloader = DataLoader(tokenized_datasets_fact["test"], batch_size=5)
+    test_dataloader = DataLoader(tokenized_datasets_fact["test"], batch_size=eval_batch_size)
 
-    validation_dataloader = DataLoader(tokenized_datasets_fact["validation"], batch_size=5)
+    validation_dataloader = DataLoader(tokenized_datasets_fact["validation"], batch_size=eval_batch_size)
 
     optimizer = AdamW(model.parameters(), lr=learning_rate)
 
