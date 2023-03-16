@@ -5,10 +5,11 @@ for dataset in ["ecthr_a", "ecthr_b"]:
         for train_batch_size in [1, 2, 4, 8]:
             for seed_number in [43, 97]:
                 for task in ["base", "add_true_label", "add_false_label"]:
-                    print(f"python longformer_base.py --task_name {task} --dataset {dataset} " + 
+                    command = (f"python longformer_base.py --task_name {task} --dataset {dataset} " + 
                           f"--learning_rate {learning_rate} " + 
                           f"-p {path_root} " +
                           f"--seed_number {seed_number} " + 
                           f"--train_batch_size {train_batch_size} " + 
-                          f"--eval_batch_size {eval_batch_size} " + 
-                          "--test ")
+                          f"--eval_batch_size {eval_batch_size} ")
+                    command = command + "--test " # remove this line
+                    print(command)
