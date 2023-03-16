@@ -136,129 +136,134 @@ def cal_val_score(model, validation_dataloader, epoch_n):
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--task_name", choices=["base", "add_true_label", "add_false_label"], required=True)
-    parser.add_argument("--dataset", choices=["ecthr_a", "ecthr_b"], required=True)
-    parser.add_argument("-n", "--num_epochs", type=int, default=7)
-    parser.add_argument("-lr", "--learning_rate", type=float, default=1e-5)
-    parser.add_argument("-p", "--model_saving_path", required=True)
-    parser.add_argument("-s", "--seed_number", type=int, default=42)
-    parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
-    parser.add_argument("--log_file", required=True)
-    parser.add_argument("--train_batch_size", type=int, default=1)
-    parser.add_argument("--eval_batch_size", type=int, default=5)
-    
-    args = parser.parse_args()
-    
-    print(args)
-
-    logging.basicConfig(filename=args.log_file,
-        filemode='w',
-        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-        datefmt='%H:%M:%S',
-        level=logging.DEBUG)
-
-    task_name = args.task_name
-    num_epochs = args.num_epochs
-    learning_rate = args.learning_rate
-    train_batch_size = args.train_batch_size
-    eval_batch_size = args.eval_batch_size
-    model_saving_path = args.model_saving_path
-
-    isExist = os.path.exists(model_saving_path)
-    if not isExist:
-        # Create a new directory because it does not exist
-        os.makedirs(model_saving_path)
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-t", "--task_name", choices=["base", "add_true_label", "add_false_label"], required=True)
+        parser.add_argument("--dataset", choices=["ecthr_a", "ecthr_b"], required=True)
+        parser.add_argument("-n", "--num_epochs", type=int, default=7)
+        parser.add_argument("-lr", "--learning_rate", type=float, default=1e-5)
+        parser.add_argument("-p", "--model_saving_path", required=True)
+        parser.add_argument("-s", "--seed_number", type=int, default=42)
+        parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
+        parser.add_argument("--log_file", required=True)
+        parser.add_argument("--train_batch_size", type=int, default=1)
+        parser.add_argument("--eval_batch_size", type=int, default=5)
         
-    seed_number = args.seed_number
+        args = parser.parse_args()
 
-    seed_everything(seed_number)
+        logging.basicConfig(
+            handlers=[
+                logging.FileHandler(args.log_file, mode="w"),
+                logging.StreamHandler()
+            ],
+            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+            datefmt='%H:%M:%S',
+            level=logging.DEBUG)
 
-    dataset = load_dataset("huynguyendayrui/ecthr")
-    if args.dataset == "ecthr_a":
-        dataset = dataset.rename_column("labels_task_a","labels")
-        dataset = dataset.remove_columns(["labels_task_b"])
-    else:
-        dataset = dataset.rename_column("labels_task_b","labels")
-        dataset = dataset.remove_columns(["labels_task_a"])
+        logging.info(f"Args: {str(args)}")
+        task_name = args.task_name
+        num_epochs = args.num_epochs
+        learning_rate = args.learning_rate
+        train_batch_size = args.train_batch_size
+        eval_batch_size = args.eval_batch_size
+        model_saving_path = args.model_saving_path
 
-    if args.test:
-        dataset["train"] = dataset["train"].select(range(5))
-        dataset["test"] = dataset["test"].select(range(5))
-        dataset["validation"] = dataset["validation"].select(range(5))
+        isExist = os.path.exists(model_saving_path)
+        if not isExist:
+            # Create a new directory because it does not exist
+            os.makedirs(model_saving_path)
+            
+        seed_number = args.seed_number
 
-    load_model = pretrain_model
+        seed_everything(seed_number)
 
-    model = LongformerForSequenceClassification.from_pretrained(load_model, num_labels=10, problem_type="multi_label_classification")
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model.to(device)
+        dataset = load_dataset("huynguyendayrui/ecthr")
+        if args.dataset == "ecthr_a":
+            dataset = dataset.rename_column("labels_task_a","labels")
+            dataset = dataset.remove_columns(["labels_task_b"])
+        else:
+            dataset = dataset.rename_column("labels_task_b","labels")
+            dataset = dataset.remove_columns(["labels_task_a"])
 
-    tokenized_datasets_fact = dataset.map(tokenize_function_1)
-    tokenized_datasets_fact = tokenized_datasets_fact.remove_columns(["text", "law"])
-    tokenized_datasets_fact = tokenized_datasets_fact.map(one_hot_labels)
-    tokenized_datasets_fact.set_format("torch")
-    tokenized_datasets_fact = tokenized_datasets_fact.map(lambda x : {"float_labels": x["labels"].to(torch.float)})
-    tokenized_datasets_fact = tokenized_datasets_fact.remove_columns("labels")
-    tokenized_datasets_fact = tokenized_datasets_fact.rename_column("float_labels", "labels")
+        if args.test:
+            dataset["train"] = dataset["train"].select(range(5))
+            dataset["test"] = dataset["test"].select(range(5))
+            dataset["validation"] = dataset["validation"].select(range(5))
 
-    if task_name == "add_true_label" or task_name == "add_false_label":
-        tokenized_datasets_legal = dataset["train"].map(tokenize_function_2)
-        tokenized_datasets_legal = tokenized_datasets_legal.remove_columns(["text", "law"])
+        load_model = pretrain_model
 
-        if task_name == "add_false_label":
-            single_col = "labels" # specify the column name here
-            dset_single_col = tokenized_datasets_legal.remove_columns([col for col in tokenized_datasets_legal.column_names if col != single_col])
-            dset_single_col_shuffled = dset_single_col.shuffle(seed=seed_number)
-            dset_without_single_col = tokenized_datasets_legal.remove_columns([single_col])
-            tokenized_datasets_legal = concatenate_datasets([dset_without_single_col, dset_single_col_shuffled], axis = 1)
+        model = LongformerForSequenceClassification.from_pretrained(load_model, num_labels=10, problem_type="multi_label_classification")
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        model.to(device)
 
-        tokenized_datasets_legal = tokenized_datasets_legal.map(one_hot_labels)
-        tokenized_datasets_legal.set_format("torch")
-        tokenized_datasets_legal = tokenized_datasets_legal.map(lambda x : {"float_labels": x["labels"].to(torch.float)})
-        tokenized_datasets_legal = tokenized_datasets_legal.remove_columns("labels")
-        tokenized_datasets_legal = tokenized_datasets_legal.rename_column("float_labels", "labels")
+        tokenized_datasets_fact = dataset.map(tokenize_function_1)
+        tokenized_datasets_fact = tokenized_datasets_fact.remove_columns(["text", "law"])
+        tokenized_datasets_fact = tokenized_datasets_fact.map(one_hot_labels)
+        tokenized_datasets_fact.set_format("torch")
+        tokenized_datasets_fact = tokenized_datasets_fact.map(lambda x : {"float_labels": x["labels"].to(torch.float)})
+        tokenized_datasets_fact = tokenized_datasets_fact.remove_columns("labels")
+        tokenized_datasets_fact = tokenized_datasets_fact.rename_column("float_labels", "labels")
 
-    if task_name == "base":
-        train_dataset = tokenized_datasets_fact["train"]
-    else:
-        train_dataset = concatenate_datasets([tokenized_datasets_fact["train"], tokenized_datasets_legal])
+        if task_name == "add_true_label" or task_name == "add_false_label":
+            tokenized_datasets_legal = dataset["train"].map(tokenize_function_2)
+            tokenized_datasets_legal = tokenized_datasets_legal.remove_columns(["text", "law"])
 
-    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=train_batch_size)
+            if task_name == "add_false_label":
+                single_col = "labels" # specify the column name here
+                dset_single_col = tokenized_datasets_legal.remove_columns([col for col in tokenized_datasets_legal.column_names if col != single_col])
+                dset_single_col_shuffled = dset_single_col.shuffle(seed=seed_number)
+                dset_without_single_col = tokenized_datasets_legal.remove_columns([single_col])
+                tokenized_datasets_legal = concatenate_datasets([dset_without_single_col, dset_single_col_shuffled], axis = 1)
 
-    test_dataloader = DataLoader(tokenized_datasets_fact["test"], batch_size=eval_batch_size)
+            tokenized_datasets_legal = tokenized_datasets_legal.map(one_hot_labels)
+            tokenized_datasets_legal.set_format("torch")
+            tokenized_datasets_legal = tokenized_datasets_legal.map(lambda x : {"float_labels": x["labels"].to(torch.float)})
+            tokenized_datasets_legal = tokenized_datasets_legal.remove_columns("labels")
+            tokenized_datasets_legal = tokenized_datasets_legal.rename_column("float_labels", "labels")
 
-    validation_dataloader = DataLoader(tokenized_datasets_fact["validation"], batch_size=eval_batch_size)
+        if task_name == "base":
+            train_dataset = tokenized_datasets_fact["train"]
+        else:
+            train_dataset = concatenate_datasets([tokenized_datasets_fact["train"], tokenized_datasets_legal])
 
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
+        train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=train_batch_size)
 
-    num_training_steps = num_epochs * len(train_dataloader)
-    lr_scheduler = get_scheduler(
-        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
-    )
+        test_dataloader = DataLoader(tokenized_datasets_fact["test"], batch_size=eval_batch_size)
 
-    class_weights = torch.Tensor([
-        0.9525375939849624, 
-        0.8732142857142857, 
-        0.8714285714285714, 
-        0.5578947368421052, 
-        0.9332706766917294, 
-        0.9961466165413534, 
-        0.9726503759398496, 
-        0.9896616541353384, 
-        0.9867481203007519, 
-        0.8664473684210526]
-    ).to(device)
+        validation_dataloader = DataLoader(tokenized_datasets_fact["validation"], batch_size=eval_batch_size)
 
-    prev_val_loss = 10
+        optimizer = AdamW(model.parameters(), lr=learning_rate)
 
-    for epoch in range(num_epochs):
-        train_model(model, train_dataloader, epoch)
-        model_checkpoint = f"longformer_{task_name}_epoch_{epoch}"
-        print(f"Saving {model_checkpoint}")
-        model.save_pretrained(model_saving_path + "/" + model_checkpoint)
-        test_loss = cal_test_score(model, test_dataloader, epoch)
-        val_loss = cal_val_score(model, validation_dataloader, epoch)
-        if prev_val_loss < val_loss:
-            break
-        prev_val_loss = val_loss
+        num_training_steps = num_epochs * len(train_dataloader)
+        lr_scheduler = get_scheduler(
+            name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
+        )
+
+        class_weights = torch.Tensor([
+            0.9525375939849624, 
+            0.8732142857142857, 
+            0.8714285714285714, 
+            0.5578947368421052, 
+            0.9332706766917294, 
+            0.9961466165413534, 
+            0.9726503759398496, 
+            0.9896616541353384, 
+            0.9867481203007519, 
+            0.8664473684210526]
+        ).to(device)
+
+        prev_val_loss = 10
+
+        for epoch in range(num_epochs):
+            train_model(model, train_dataloader, epoch)
+            model_checkpoint = f"longformer_{task_name}_epoch_{epoch}"
+            print(f"Saving {model_checkpoint}")
+            model.save_pretrained(model_saving_path + "/" + model_checkpoint)
+            test_loss = cal_test_score(model, test_dataloader, epoch)
+            val_loss = cal_val_score(model, validation_dataloader, epoch)
+            if prev_val_loss < val_loss:
+                logging.info(f"Early stopping after epoch {epoch}")
+                break
+            prev_val_loss = val_loss
+    except Exception as e:
+        logging.exception(e)
