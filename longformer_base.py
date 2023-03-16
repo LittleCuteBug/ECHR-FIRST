@@ -139,6 +139,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--task_name", choices=["base", "add_true_label", "add_false_label"], required=True)
+    parser.add_argument("--dataset", choices=["ecthr_a", "ecthr_b"], required=True)
     parser.add_argument("-n", "--num_epochs", type=int, default=7)
     parser.add_argument("-lr", "--learning_rate", type=float, default=1e-5)
     parser.add_argument("-p", "--model_saving_path", required=True)
@@ -174,7 +175,14 @@ if __name__ == "__main__":
 
     seed_everything(seed_number)
 
-    dataset = load_dataset("huynguyendayrui/ecthr_a")
+    dataset = load_dataset("huynguyendayrui/ecthr")
+    if args.dataset == "ecthr_a":
+        dataset = dataset.rename_column("labels_task_a","labels")
+        dataset = dataset.remove_columns(["labels_task_b"])
+    else:
+        dataset = dataset.rename_column("labels_task_b","labels")
+        dataset = dataset.remove_columns(["labels_task_a"])
+
     if args.test:
         dataset["train"] = dataset["train"].select(range(5))
         dataset["test"] = dataset["test"].select(range(5))
