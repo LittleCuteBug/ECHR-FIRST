@@ -93,7 +93,7 @@ def cal_test_score(model, test_dataloader, epoch_n):
 
 def cal_val_score(model, validation_dataloader, epoch_n):
     logger = logging.getLogger(f"validation epoch {epoch_n}")
-    logger.info(f"Cal validation score for epoch{epoch_n}")
+    logger.info(f"Cal validation score for epoch {epoch_n}")
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         parser.add_argument("--dataset", choices=["ecthr_a", "ecthr_b"], required=True)
         parser.add_argument("-n", "--num_epochs", type=int, default=7)
         parser.add_argument("-lr", "--learning_rate", type=float, default=1e-5)
-        parser.add_argument("-p", "--model_saving_path", required=True)
+        parser.add_argument("-p", "--saving_path_root", required=True)
         parser.add_argument("-s", "--seed_number", type=int, default=42)
         parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
         parser.add_argument("--train_batch_size", type=int, default=1)
@@ -148,9 +148,11 @@ if __name__ == "__main__":
         learning_rate = args.learning_rate
         train_batch_size = args.train_batch_size
         eval_batch_size = args.eval_batch_size
-        model_saving_path = args.model_saving_path            
+        saving_path_root = args.saving_path_root            
         seed_number = args.seed_number
 
+        model_saving_path = saving_path_root + "/" + args.dataset + '/' + task_name + "/" + f"lr_{learning_rate}_batch_size_{train_batch_size}_seed_{seed_number}"
+                   
         if not os.path.exists(model_saving_path):
             # Create a new directory because it does not exist
             os.makedirs(model_saving_path)
@@ -258,15 +260,15 @@ if __name__ == "__main__":
         prev_val_loss = 10
 
         for epoch in range(num_epochs):
-            # train_model(model, train_dataloader, epoch)
-            model_checkpoint = f"longformer_{task_name}_epoch_{epoch}"
+            train_model(model, train_dataloader, epoch)
+            model_checkpoint = f"epoch_{epoch}"
             logging.info(f"Saving {model_checkpoint}")
             model.save_pretrained(model_saving_path + "/" + model_checkpoint)
             val_loss = cal_val_score(model, validation_dataloader, epoch)
             if prev_val_loss <= val_loss:
                 logging.info(f"Early stopping after epoch {epoch}")
                 # Save previous f1 score to score.csv file
-                f = open("score.csv", "a")
+                f = open(f"{saving_path_root}/score.csv", "a")
                 f.write(f"{task_name},{args.dataset},{learning_rate},{train_batch_size},{seed_number},{test_f1_macro},{test_f1_micro}")
                 break
             prev_val_loss = val_loss

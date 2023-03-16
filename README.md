@@ -34,7 +34,7 @@ usage: longformer_base.py [-h]
                           --dataset {ecthr_a,ecthr_b}
                           [-n NUM_EPOCHS]
                           [-lr LEARNING_RATE]
-                          -p MODEL_SAVING_PATH
+                          -p SAVING_PATH_ROOT
                           [-s SEED_NUMBER]
                           [--test]
                           [--train_batch_size TRAIN_BATCH_SIZE]
@@ -46,7 +46,7 @@ optional arguments:
   --dataset {ecthr_a,ecthr_b}
   -n NUM_EPOCHS, --num_epochs NUM_EPOCHS
   -lr LEARNING_RATE, --learning_rate LEARNING_RATE
-  -p MODEL_SAVING_PATH, --model_saving_path MODEL_SAVING_PATH
+  -p SAVING_PATH_ROOT, --saving_path_root SAVING_PATH_ROOT
   -s SEED_NUMBER, --seed_number SEED_NUMBER
   --test                Run with sampled data for testing
   --train_batch_size TRAIN_BATCH_SIZE
