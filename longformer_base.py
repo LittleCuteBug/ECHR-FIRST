@@ -51,7 +51,6 @@ def train_model(model, train_dataloader, epoch_n):
         lr_scheduler.step()
         model.zero_grad()
     avg_train_loss = total_train_loss / len(train_dataloader)
-    print(f"avg_train_loss: {avg_train_loss}")
     logger.info(f"avg_train_loss: {avg_train_loss}")
 
 def cal_test_score(model, test_dataloader, epoch_n):
@@ -79,18 +78,14 @@ def cal_test_score(model, test_dataloader, epoch_n):
             metric[i].add_batch(predictions=p, references=r)
             metric_micro.add_batch(predictions=p, references=r)
     avg_test_loss = total_test_loss / len(test_dataloader)
-    print(f"avg_test_loss: {avg_test_loss}")
     logger.info(f"avg_test_loss: {avg_test_loss}")
     f1_avg = 0
     for idx, m in enumerate(metric):
         scores = m.compute()
-        print(f"label {idx}: {str(scores)}")
         logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    print(f"f1 macro: {f1_avg/10}")
     logger.info(f"f1 macro: {f1_avg/10}")
     metric_micro_score = metric_micro.compute()
-    print(f"f1 micro: {str(metric_micro_score)}")
     logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_test_loss
 
@@ -119,18 +114,14 @@ def cal_val_score(model, validation_dataloader, epoch_n):
             metric[i].add_batch(predictions=p, references=r)
             metric_micro.add_batch(predictions=p, references=r)
     avg_val_loss = total_val_loss / len(validation_dataloader)
-    print("avg_val_loss", avg_val_loss)
     logger.info(f"avg_val_loss: {avg_val_loss}")
     f1_avg = 0
     for idx, m in enumerate(metric):
         scores = m.compute()
-        print(f"label {idx}: {str(scores)}")
         logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    print(f"f1 macro: {f1_avg/10}")
     logger.info(f"f1 macro: {f1_avg/10}")
     metric_micro_score = metric_micro.compute()
-    print(f"f1 micro: {str(metric_micro_score)}")
     logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_val_loss
 
@@ -145,15 +136,25 @@ if __name__ == "__main__":
         parser.add_argument("-p", "--model_saving_path", required=True)
         parser.add_argument("-s", "--seed_number", type=int, default=42)
         parser.add_argument("--test", action="store_true", default=False, help="Run with sampled data for testing")
-        parser.add_argument("--log_file", required=True)
         parser.add_argument("--train_batch_size", type=int, default=1)
         parser.add_argument("--eval_batch_size", type=int, default=5)
         
         args = parser.parse_args()
+        task_name = args.task_name
+        num_epochs = args.num_epochs
+        learning_rate = args.learning_rate
+        train_batch_size = args.train_batch_size
+        eval_batch_size = args.eval_batch_size
+        model_saving_path = args.model_saving_path            
+        seed_number = args.seed_number
+
+        if not os.path.exists(model_saving_path):
+            # Create a new directory because it does not exist
+            os.makedirs(model_saving_path)
 
         logging.basicConfig(
             handlers=[
-                logging.FileHandler(args.log_file, mode="w"),
+                logging.FileHandler(model_saving_path + "/log.log", mode="w"),
                 logging.StreamHandler()
             ],
             format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
@@ -161,19 +162,6 @@ if __name__ == "__main__":
             level=logging.DEBUG)
 
         logging.info(f"Args: {str(args)}")
-        task_name = args.task_name
-        num_epochs = args.num_epochs
-        learning_rate = args.learning_rate
-        train_batch_size = args.train_batch_size
-        eval_batch_size = args.eval_batch_size
-        model_saving_path = args.model_saving_path
-
-        isExist = os.path.exists(model_saving_path)
-        if not isExist:
-            # Create a new directory because it does not exist
-            os.makedirs(model_saving_path)
-            
-        seed_number = args.seed_number
 
         seed_everything(seed_number)
 
@@ -269,7 +257,7 @@ if __name__ == "__main__":
         for epoch in range(num_epochs):
             train_model(model, train_dataloader, epoch)
             model_checkpoint = f"longformer_{task_name}_epoch_{epoch}"
-            print(f"Saving {model_checkpoint}")
+            logging.info(f"Saving {model_checkpoint}")
             model.save_pretrained(model_saving_path + "/" + model_checkpoint)
             test_loss = cal_test_score(model, test_dataloader, epoch)
             val_loss = cal_val_score(model, validation_dataloader, epoch)
