@@ -36,6 +36,7 @@ def one_hot_labels(example):
 
 def train_model(model, train_dataloader, epoch_n):
     logger = logging.getLogger(f"train epoch {epoch_n}")
+    logger.info(f"Train epoch {epoch_n}")
     model.train()
     total_train_loss = 0
     for batch in tqdm(train_dataloader, desc=f"train epoch {epoch_n}"):
@@ -55,6 +56,7 @@ def train_model(model, train_dataloader, epoch_n):
 
 def cal_test_score(model, test_dataloader, epoch_n):
     logger = logging.getLogger(f"test epoch {epoch_n}")
+    logger.info(f"Cal test score for epoch {epoch_n}")
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
@@ -87,10 +89,11 @@ def cal_test_score(model, test_dataloader, epoch_n):
     logger.info(f"f1 macro: {f1_avg/10}")
     metric_micro_score = metric_micro.compute()
     logger.info(f"f1 micro: {str(metric_micro_score)}")
-    return avg_test_loss
+    return avg_test_loss, f1_avg/10, metric_micro_score["f1"]
 
 def cal_val_score(model, validation_dataloader, epoch_n):
     logger = logging.getLogger(f"validation epoch {epoch_n}")
+    logger.info(f"Cal validation score for epoch{epoch_n}")
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
@@ -159,7 +162,7 @@ if __name__ == "__main__":
             ],
             format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
             datefmt='%H:%M:%S',
-            level=logging.DEBUG)
+            level=logging.INFO)
 
         logging.info(f"Args: {str(args)}")
 
@@ -255,15 +258,18 @@ if __name__ == "__main__":
         prev_val_loss = 10
 
         for epoch in range(num_epochs):
-            train_model(model, train_dataloader, epoch)
+            # train_model(model, train_dataloader, epoch)
             model_checkpoint = f"longformer_{task_name}_epoch_{epoch}"
             logging.info(f"Saving {model_checkpoint}")
             model.save_pretrained(model_saving_path + "/" + model_checkpoint)
-            test_loss = cal_test_score(model, test_dataloader, epoch)
             val_loss = cal_val_score(model, validation_dataloader, epoch)
-            if prev_val_loss < val_loss:
+            if prev_val_loss <= val_loss:
                 logging.info(f"Early stopping after epoch {epoch}")
+                # Save previous f1 score to score.csv file
+                f = open("score.csv", "a")
+                f.write(f"{task_name},{args.dataset},{learning_rate},{train_batch_size},{seed_number},{test_f1_macro},{test_f1_micro}")
                 break
             prev_val_loss = val_loss
+            test_loss, test_f1_macro, test_f1_micro = cal_test_score(model, test_dataloader, epoch)
     except Exception as e:
         logging.exception(e)
