@@ -31,7 +31,8 @@ Arguments:
 ```
 usage: longformer_base.py [-h]
                           -t {base,add_true_label,add_false_label}
-                          --dataset {ecthr_a,ecthr_b} [-n NUM_EPOCHS]
+                          --dataset {ecthr_a,ecthr_b}
+                          [-n NUM_EPOCHS]
                           [-lr LEARNING_RATE]
                           -p MODEL_SAVING_PATH
                           [-s SEED_NUMBER]
