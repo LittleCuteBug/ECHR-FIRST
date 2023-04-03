@@ -39,17 +39,20 @@ def train_model(model, train_dataloader, epoch_n):
     logger.info(f"Train epoch {epoch_n}")
     model.train()
     total_train_loss = 0
+    scaler = torch.cuda.amp.GradScaler()
     for batch in tqdm(train_dataloader, desc=f"train epoch {epoch_n}"):
         batch = {k: v.to(device) for k, v in batch.items()}
-        outputs = model(**batch)
-        logits = outputs.logits
+        with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+            outputs = model(**batch)
+        # logits = outputs.logits
         # criterion = torch.nn.BCELoss(weight=class_weights)
         # sigmoid = torch.nn.Sigmoid()
         # loss = criterion(sigmoid(logits), batch['labels'])
-        loss = outputs.loss
+            loss = outputs.loss
         total_train_loss += loss.item()
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         lr_scheduler.step()
         model.zero_grad()
     avg_train_loss = total_train_loss / len(train_dataloader)
