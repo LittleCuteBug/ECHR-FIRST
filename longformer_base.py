@@ -179,6 +179,9 @@ if __name__ == "__main__":
             # Create a new directory because it does not exist
             os.makedirs(model_saving_path)
 
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
         logging.basicConfig(
             handlers=[
                 logging.FileHandler(model_saving_path + "/log.log", mode="w"),
