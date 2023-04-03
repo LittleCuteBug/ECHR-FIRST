@@ -43,9 +43,10 @@ def train_model(model, train_dataloader, epoch_n):
         batch = {k: v.to(device) for k, v in batch.items()}
         outputs = model(**batch)
         logits = outputs.logits
-        criterion = torch.nn.BCELoss(weight=class_weights)
-        sigmoid = torch.nn.Sigmoid()
-        loss = criterion(sigmoid(logits), batch['labels'])
+        # criterion = torch.nn.BCELoss(weight=class_weights)
+        # sigmoid = torch.nn.Sigmoid()
+        # loss = criterion(sigmoid(logits), batch['labels'])
+        loss = outputs.loss
         total_train_loss += loss.item()
         loss.backward()
         optimizer.step()
@@ -69,8 +70,9 @@ def cal_test_score(model, test_dataloader, epoch_n):
             outputs = model(**batch)
         logits = outputs.logits
         sigmoid = torch.nn.Sigmoid()
-        criterion = torch.nn.BCELoss(weight=class_weights)
-        loss = criterion(sigmoid(logits), batch['labels'])
+        # criterion = torch.nn.BCELoss(weight=class_weights)
+        # loss = criterion(sigmoid(logits), batch['labels'])
+        loss = outputs.loss
         total_test_loss += loss.item()
         probs = sigmoid(torch.Tensor(logits))
         predictions = [[1 if t > 0.5 else 0 for t in p] for p in probs]
@@ -106,8 +108,9 @@ def cal_val_score(model, validation_dataloader, epoch_n):
             outputs = model(**batch)
         logits = outputs.logits
         sigmoid = torch.nn.Sigmoid()
-        criterion = torch.nn.BCELoss(weight=class_weights)
-        loss = criterion(sigmoid(logits), batch['labels'])
+        # criterion = torch.nn.BCELoss(weight=class_weights)
+        # loss = criterion(sigmoid(logits), batch['labels'])
+        loss = outputs.loss
         total_val_loss += loss.item()
         probs = sigmoid(torch.Tensor(logits))
         predictions = [[1 if t > 0.5 else 0 for t in p] for p in probs]
@@ -231,33 +234,33 @@ if __name__ == "__main__":
         lr_scheduler = get_scheduler(
             name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
         )
-        if args.dataset == "ecthr_a":
-            class_weights = torch.Tensor([
-                0.9525375939849624, 
-                0.8732142857142857, 
-                0.8714285714285714, 
-                0.5578947368421052, 
-                0.9332706766917294, 
-                0.9961466165413534, 
-                0.9726503759398496, 
-                0.9896616541353384, 
-                0.9867481203007519, 
-                0.8664473684210526]
-            ).to(device)
-        else:
-            class_weights = torch.Tensor([
-                0.9526775541207748,
-                0.8678313710596278,
-                0.8767185719711356,
-                0.5870110140524117,
-                0.919787314849981,
-                0.9938473224458793,
-                0.9665020888720092,
-                0.9876946448917584,
-                0.9662742119255602,
-                0.8816559058108622]
-            ).to(device)
-        prev_val_loss = 10
+        # if args.dataset == "ecthr_a":
+        #     class_weights = torch.Tensor([
+        #         0.9525375939849624, 
+        #         0.8732142857142857, 
+        #         0.8714285714285714, 
+        #         0.5578947368421052, 
+        #         0.9332706766917294, 
+        #         0.9961466165413534, 
+        #         0.9726503759398496, 
+        #         0.9896616541353384, 
+        #         0.9867481203007519, 
+        #         0.8664473684210526]
+        #     ).to(device)
+        # else:
+        #     class_weights = torch.Tensor([
+        #         0.9526775541207748,
+        #         0.8678313710596278,
+        #         0.8767185719711356,
+        #         0.5870110140524117,
+        #         0.919787314849981,
+        #         0.9938473224458793,
+        #         0.9665020888720092,
+        #         0.9876946448917584,
+        #         0.9662742119255602,
+        #         0.8816559058108622]
+        #     ).to(device)
+        prev_val_loss = 1000
 
         for epoch in range(num_epochs):
             train_model(model, train_dataloader, epoch)
