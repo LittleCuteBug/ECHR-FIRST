@@ -64,6 +64,7 @@ def cal_test_score(model, test_dataloader, epoch_n):
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
+    metric_unlabeled_class = evaluate.combine(["accuracy", "recall", "precision", "f1"])
     metric_micro = evaluate.combine(["accuracy", "recall", "precision", "f1"])
     model.eval()
     total_test_loss = 0
@@ -84,6 +85,10 @@ def cal_test_score(model, test_dataloader, epoch_n):
             r = [t[i] for t in batch["labels"]]
             metric[i].add_batch(predictions=p, references=r)
             metric_micro.add_batch(predictions=p, references=r)
+        p_unlabeled_class = [1 if sum(t) == 0 else 0 for t in predictions]
+        r_unlabeled_class  = [1 if sum(t) == 0 else 0 for t in batch["labels"]]
+        metric_unlabeled_class.add_batch(predictions=p_unlabeled_class, references=r_unlabeled_class)
+        metric_micro.add_batch(predictions=p_unlabeled_class, references=r_unlabeled_class)
     avg_test_loss = total_test_loss / len(test_dataloader)
     logger.info(f"avg_test_loss: {avg_test_loss}")
     f1_avg = 0
@@ -91,7 +96,10 @@ def cal_test_score(model, test_dataloader, epoch_n):
         scores = m.compute()
         logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    logger.info(f"f1 macro: {f1_avg/10}")
+    scores = metric_unlabeled_class.compute()
+    logger.info(f"unlabel class: {str(scores)}")
+    f1_avg += scores["f1"]
+    logger.info(f"f1 macro: {f1_avg/11}")
     metric_micro_score = metric_micro.compute()
     logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_test_loss, f1_avg/10, metric_micro_score["f1"]
@@ -102,6 +110,7 @@ def cal_val_score(model, validation_dataloader, epoch_n):
     metric = []
     for i in range(10):
         metric.append(evaluate.combine(["accuracy", "recall", "precision", "f1"]))
+    metric_unlabeled_class = evaluate.combine(["accuracy", "recall", "precision", "f1"])
     metric_micro = evaluate.combine(["accuracy", "recall", "precision", "f1"])
     model.eval()
     total_val_loss = 0
@@ -122,6 +131,10 @@ def cal_val_score(model, validation_dataloader, epoch_n):
             r = [t[i] for t in batch["labels"]]
             metric[i].add_batch(predictions=p, references=r)
             metric_micro.add_batch(predictions=p, references=r)
+        p_unlabeled_class = [1 if sum(t) == 0 else 0 for t in predictions]
+        r_unlabeled_class  = [1 if sum(t) == 0 else 0 for t in batch["labels"]]
+        metric_unlabeled_class.add_batch(predictions=p_unlabeled_class, references=r_unlabeled_class)
+        metric_micro.add_batch(predictions=p_unlabeled_class, references=r_unlabeled_class)
     avg_val_loss = total_val_loss / len(validation_dataloader)
     logger.info(f"avg_val_loss: {avg_val_loss}")
     f1_avg = 0
@@ -129,7 +142,10 @@ def cal_val_score(model, validation_dataloader, epoch_n):
         scores = m.compute()
         logger.info(f"label {idx}: {str(scores)}")
         f1_avg += scores["f1"]
-    logger.info(f"f1 macro: {f1_avg/10}")
+    scores = metric_unlabeled_class.compute()
+    logger.info(f"unlabel class: {str(scores)}")
+    f1_avg += scores["f1"]
+    logger.info(f"f1 macro: {f1_avg/11}")
     metric_micro_score = metric_micro.compute()
     logger.info(f"f1 micro: {str(metric_micro_score)}")
     return avg_val_loss
